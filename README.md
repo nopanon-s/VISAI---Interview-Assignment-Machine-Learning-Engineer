@@ -1,1 +1,31 @@
-# VISAI---Interview-Assignment-Machine-Learning-Engineer
+# VISAI Interview-Assignment-Machine-Learning-Engineer
+
+
+![image05](https://user-images.githubusercontent.com/71952749/229332147-b7091d49-8e23-4f23-b514-5c40998df51a.png)
+
+## System
+![image01](https://user-images.githubusercontent.com/71952749/229332231-67451dc7-4bdd-44d3-931f-89fa0335fd49.png)
+  * ทำการออกแบบระบบโดยแบ่งเป็น 2 ส่วนหลัก 
+      * ส่วน Edge computing  - ส่วนนี้เป็นส่วนที่ใช้รถวิ่งจับภาพทั่วประเทศ โดยจะทำการติดกล้องและอุปกรณ์สำหรับประมวลผลข้อมูลเพื่อทำการหาป้ายหาเสียงในภาพที่กล้องถ่ายภาพมาได้ (object detection)
+      * ส่วน Cloud computing - ส่วนนี้เป็นส่วนที่ใช้ในการคัดแยกว่าภาพป้ายที่ส่งขึ้นมากจากรถนั้นเป็นป้ายหาเสียงหรือไม่ หากใช่มากจากพรรคการเมืองใด (text detection, ocr, classification)
+### ObjectDetection
+![image02](https://user-images.githubusercontent.com/71952749/229332260-511449cf-bdf6-48ce-8172-d93a2485db94.png)
+  * object detection ส่วนนี้จะเป็นส่วนของการตรวจจับภาพที่กล้องถ่ายภาพมาได้ ว่าในภาพมีป้ายหาเสียงอยู่หรือไม่ หากตรวจพบป้ายหาเสียงจะทำการแปลงข้อมูลภาพให้เป็น base64 จากนั้นทำข้อมูลให้เป็นไฟล์ protoc (protocal buffers) เพื่อส่งขึ้น cloud ผ่าน gRPC
+### Queue
+![image06](https://user-images.githubusercontent.com/71952749/229332359-2ea5eabe-6155-4149-a38d-efee8f84754d.png)
+  * หลังจากที่ส่งข้อมูลขึ้น cloud ผ่าน gRPC เป็นที่เรียบร้อยแล้ว file จะเข้ามาต่อคิวเพื่อรอประมวลผลในขึ้นตอนถัดๆไป
+### Text detection
+![image04](https://user-images.githubusercontent.com/71952749/229332402-047c983e-60a8-436d-913b-678bd337a3e0.png)
+  * รับภาพและข้อมูลจากกระบวนการก่อนหน้า ทำการหาข้อความบนแผนป้ายว่าอยู่ในตำแหน่งใดบ้าง โดยใช้วิธี Text detecttion เช่นโมเดล Craft ผลของโมเดล text detection จะได้คำตอบเป็นบริเวณของแต่ละบรรทัดของข้อความ จากนั้นส่งภาพพร้อมข้อมูลตำแหน่งบรรทัดไปสู่กระบวนการถัดไป
+### OCR
+![image07](https://user-images.githubusercontent.com/71952749/229332633-fce902a8-670c-4844-8baf-66a734b71ce3.png)
+  * รับภาพและตำแหน่งของข้อความจากกระบวนการก่อนหน้ามาแปลงให้เป็นตัวอักษรที่คอมพิวเตอร์สามารถอ่านออกได้ โดยการทำ OCR หลังจากนั้นนำข้อความที่ได้ไปหา keyword ที่ตรงกับชื่อพรรคการเมือง หากมี keyword นั้นอยู่จะถือว่าภาพดังกล่าวเป็นภาพป้ายหาเสียงและทราบว่ามาจากพรรคการเมืองใด ถ้าหากไม่มีจะถือว่าภาพดังกล่าวไม่ใช่ภาพป้ายหาเสียง
+
+## Optimization
+  ### Training
+   * Mixed Precision Training - การทำให้โมเดลส่วนหนึ่งเป็น half-precision (FP16) และยังคงบางส่วนไว้ที่ single-precision (FP32) ดังนั้นแล้วเวลาระหว่างการเทรนจะลดลงเนื่องจากขนาดของโมเดลลดลง ในขณะที่ยังคงประสิทธิภาพของโมเดลไว้ได้
+  ### Inference
+   * Onnx  - Onnx เป็น Open Neural Network Exchange ซึ่งช่วยในการแปลงโมเดลข้าม Framework ทำให้สามารถใช้ข้ามภาษาคอมพิวเตอร์ได้
+      * Onnx Optimizer - ใช้ Onnx optimizer ในการ optimize โมเดล ทำให้โครงสร้างมีความซับซ้อนน้อยลง โมเดลมีขนาดเล็กลง ส่งผลให้สามารถลดเวลาและ computing power ลงได้
+      * Onnx Mixed Precision - เช่นเดียวกับการทำ Mixed Precision Training แต่ส่วนนี้จะทำกับโมเดลที่ได้รับการเทรนเรียบร้อยแล้ว ดังนั้นเมื่อโมเดลบางส่วนโดนทำให้กลายเป็น half-precision ความเร็วในการคำนวณจะสูงขึ้น (Onnx สามารถทำให้ทั้งโมเดลเป็น half-precision(FP16)ได้ แต่อาจส่งผลทำให้ความแม่นยำของโมเดลลดลง แต่ถ้าทำเป็น half-precision แล้ว ความแม่นยำของโมเดลไม่ลดลง การทำให้เป็น half-precision ก็เป็นอีกหนึ่งในทางเลือกที่น่าสนใจ)
+   * TensortRT - tensorrt จะทำ Quantizing หรือการทำให้โมเดลเป็น INT8 และยังคงความแม่นยำของโมเดลไว้ที่ระดับสูงได้ tensorrt ยังช่วย optimize การใช้ gpu ด้วยการรวม node ใน kernel เข้าด้วยกัน และยังช่วยลดการใช้ memory อีกทั้งมีการทำ re-uses memory 
