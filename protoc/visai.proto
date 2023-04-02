@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package visai;
+
+message Car {
+    string id = 1;
+    bytes  image_data = 2;
+    string datetime = 3;
+    string bounding_box = 4;
+    float  lat  = 5;
+    float  long = 6;
+  }
+
+message Cloud {
+    string id = 1;
+    string status = 2;
+  }
+
+service ObjectDetection {
+    rpc Detect (Car) returns (Cloud);
+}
